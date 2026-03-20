@@ -10,7 +10,6 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
-
 # ========== APP INIT ==========
 app = FastAPI()
 
@@ -100,4 +99,4 @@ def ask_question(query: str):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))  # Render injects PORT
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
