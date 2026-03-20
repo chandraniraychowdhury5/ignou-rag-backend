@@ -15,7 +15,7 @@ app = FastAPI()
 # Enable CORS (for Netlify frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # you can restrict later
+    allow_origins=["*"],  # restrict later to your frontend domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,7 +35,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     global vector_db
 
     try:
-        # Save file
+        # Save file temporarily
         file_path = f"temp_{file.filename}"
         with open(file_path, "wb") as f:
             f.write(await file.read())
@@ -44,7 +44,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         loader = PyPDFLoader(file_path)
         documents = loader.load()
 
-        # Split text
+        # Split text into chunks
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=500,
             chunk_overlap=50
@@ -58,6 +58,12 @@ async def upload_pdf(file: UploadFile = File(...)):
 
         # Create FAISS vector store
         vector_db = FAISS.from_documents(texts, embeddings)
+
+        # Clean up temp file
+        try:
+            os.remove(file_path)
+        except Exception:
+            pass
 
         return {"message": "PDF uploaded & processed successfully ✅"}
 
@@ -75,6 +81,9 @@ def ask_question(query: str):
     try:
         docs = vector_db.similarity_search(query, k=3)
 
+        if not docs:
+            return {"error": "No relevant content found"}
+
         answer = "\n\n".join([doc.page_content for doc in docs])
 
         return {
@@ -88,5 +97,5 @@ def ask_question(query: str):
 # ========== RENDER PORT FIX ==========
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 10000))  # IMPORTANT
+    port = int(os.environ.get("PORT", 10000))  # Render injects PORT
     uvicorn.run(app, host="0.0.0.0", port=port)
