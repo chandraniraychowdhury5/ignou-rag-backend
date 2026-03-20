@@ -1,51 +1,93 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-import requests
-from langchain_text_splitters import CharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain_community.llms import HuggingFacePipeline
-from langchain.chains import RetrievalQA
-from transformers import pipeline
-from langchain_community.document_loaders import PyPDFLoader
+# main.py
 
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+import os
+
+# ✅ Updated LangChain imports (NEW STRUCTURE)
+from langchain.text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
+
+# ========== APP INIT ==========
 app = FastAPI()
 
-PDF_URL = "PUT_YOUR_SUPABASE_PDF_URL"
+# Enable CORS (for Netlify frontend)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # you can restrict later
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Download PDF
-import os
-if not os.path.exists("file.pdf"):
-    r = requests.get(PDF_URL)
-    open("file.pdf", "wb").write(r.content)
+# ========== GLOBAL VECTOR STORE ==========
+vector_db = None
 
-# Load PDF
-loader = PyPDFLoader("file.pdf")
-documents = loader.load()
-
-# Split
-splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-docs = splitter.split_documents(documents)
-
-# Embedding
-embeddings = HuggingFaceEmbeddings()
-
-# Vector DB
-db = FAISS.from_documents(docs, embeddings)
-
-# Local LLM
-pipe = pipeline("text-generation", model="distilgpt2")
-llm = HuggingFacePipeline(pipeline=pipe)
-
-qa = RetrievalQA.from_chain_type(llm=llm, retriever=db.as_retriever())
-
-class Query(BaseModel):
-    question: str
-
+# ========== HOME ROUTE ==========
 @app.get("/")
 def home():
-    return {"message": "RAG Running"}
+    return {"message": "AI PDF QA API running successfully on Render 🚀"}
 
-@app.post("/ask")
-def ask(q: Query):
-    return {"answer": qa.run(q.question)}
+# ========== UPLOAD PDF ==========
+@app.post("/upload/")
+async def upload_pdf(file: UploadFile = File(...)):
+    global vector_db
+
+    try:
+        # Save file
+        file_path = f"temp_{file.filename}"
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+
+        # Load PDF
+        loader = PyPDFLoader(file_path)
+        documents = loader.load()
+
+        # Split text
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=50
+        )
+        texts = splitter.split_documents(documents)
+
+        # Embeddings (lightweight & stable)
+        embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+
+        # Create FAISS vector store
+        vector_db = FAISS.from_documents(texts, embeddings)
+
+        return {"message": "PDF uploaded & processed successfully ✅"}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+# ========== ASK QUESTION ==========
+@app.get("/ask/")
+def ask_question(query: str):
+    global vector_db
+
+    if vector_db is None:
+        return {"error": "Please upload a PDF first"}
+
+    try:
+        docs = vector_db.similarity_search(query, k=3)
+
+        answer = "\n\n".join([doc.page_content for doc in docs])
+
+        return {
+            "query": query,
+            "answer": answer
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+
+# ========== RENDER PORT FIX ==========
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 10000))  # IMPORTANT
+    uvicorn.run(app, host="0.0.0.0", port=port)
