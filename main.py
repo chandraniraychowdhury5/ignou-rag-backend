@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import requests
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
+from langchain_text_splitters import CharacterTextSplitter
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_community.llms import HuggingFacePipeline
 from langchain.chains import RetrievalQA
-from langchain.llms import HuggingFacePipeline
 from transformers import pipeline
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 
 app = FastAPI()
 
