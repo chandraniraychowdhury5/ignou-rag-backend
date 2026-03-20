@@ -4,10 +4,12 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from langchain.text_splitters import RecursiveCharacterTextSplitter
+# Correct imports for your pinned versions
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
+
 
 # ========== APP INIT ==========
 app = FastAPI()
