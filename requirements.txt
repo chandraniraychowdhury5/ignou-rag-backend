@@ -3,6 +3,7 @@ uvicorn
 langchain==0.2.14
 langchain-community==0.2.12
 langchain-huggingface
+langchain-text-splitters
 faiss-cpu
 sentence-transformers
 pypdf
