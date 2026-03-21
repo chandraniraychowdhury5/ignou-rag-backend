@@ -12,7 +12,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
-genai.configure(api_key="YOUR_GEMINI_API_KEY")
+genai.configure(api_key="AIzaSyATrp2gbHMbV02onWPF3TurNXOA07UHK_c")
 
 
 # ========== APP INIT ==========
