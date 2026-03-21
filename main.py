@@ -9,9 +9,6 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
-# ========== CONFIG ==========
-PDF_URL = "PUT_YOUR_SUPABASE_PDF_URL_HERE"
-
 # ========== APP INIT ==========
 app = FastAPI()
 
