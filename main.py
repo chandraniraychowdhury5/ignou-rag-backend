@@ -3,12 +3,17 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import google.generativeai as genai
+
 
 # Correct imports for your pinned versions
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
+
+genai.configure(api_key="YOUR_GEMINI_API_KEY")
+
 
 # ========== APP INIT ==========
 app = FastAPI()
@@ -77,24 +82,35 @@ def ask_question(query: str):
     global vector_db
 
     if vector_db is None:
-        return {"error": "Please upload a PDF first"}
+        return {"error": "PDF not loaded"}
 
     try:
+        # 1. Retrieve relevant chunks
         docs = vector_db.similarity_search(query, k=3)
 
-        if not docs:
-            return {"error": "No relevant content found"}
+        context = "\n\n".join([doc.page_content for doc in docs])
 
-        answer = "\n\n".join([doc.page_content for doc in docs])
+        # 2. Gemini model
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
-        return {
-            "query": query,
-            "answer": answer
-        }
+        prompt = f"""
+        Answer the question based ONLY on the context below.
+
+        Context:
+        {context}
+
+        Question:
+        {query}
+        """
+
+        response = model.generate_content(prompt)
+
+        answer = response.text if response.text else "No answer found"
+
+        return {"answer": answer}
 
     except Exception as e:
         return {"error": str(e)}
-
 # ========== RENDER PORT FIX ==========
 if __name__ == "__main__":
     import uvicorn
